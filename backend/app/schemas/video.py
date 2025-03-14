@@ -44,6 +44,7 @@ class MaterialInfo:
     url: str = ""
     duration: int = 0
 
+
 class VideoParams(BaseModel):
     """
     {
@@ -61,7 +62,7 @@ class VideoParams(BaseModel):
 
     video_subject: str
     video_script: str = ""  # Script used to generate the video
-    video_terms: Optional[str | list] = None  # Keywords used to generate the video
+    video_terms: Union[str, list] = None  # Keywords used to generate the video
     video_aspect: Optional[VideoAspect] = VideoAspect.portrait.value
     video_concat_mode: Optional[VideoConcatMode] = VideoConcatMode.random.value
     video_clip_duration: Optional[int] = 5
@@ -176,6 +177,7 @@ class VideoScriptRequest(VideoScriptParams, BaseModel):
 class VideoTermsRequest(VideoTermsParams, BaseModel):
     pass
 
+
 class TaskResponse(BaseResponse):
     class TaskResponseData(BaseModel):
         task_id: str
@@ -288,11 +290,13 @@ class BgmUploadResponse(BaseResponse):
 
 from app.models.const import StoryType, ImageStyle
 
+
 class StoryScene(BaseModel):
     """故事场景"""
     text: str = Field(description="场景文本")
     image_prompt: str = Field(description="图片生成提示词")
     url: Optional[str] = Field(default=None, description="生成的图片 URL")
+
 
 class VideoGenerateRequest(BaseModel):
     """视频生成请求"""
