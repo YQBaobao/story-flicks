@@ -1,4 +1,3 @@
-
 interface VoiceListRes {
     voices: string[];
 }
@@ -6,6 +5,11 @@ interface VoiceListRes {
 interface LLMProvidersRes {
     textLLMProviders: string[];
     imageLLMProviders: string[];
+}
+
+interface LLMModelRes {
+    textLLMModel: string;
+    imageLLMModel: string;
 }
 
 interface VideoGenerateReq {
@@ -24,7 +28,7 @@ interface VideoGenerateReq {
 }
 
 // 假设 Language 和 ImageStyle 是其他接口或枚举
-type Language = "zh-CN" | "zh-TW" |  "en-US" | "ja-JP" | "ko-KR";
+type Language = "zh-CN" | "zh-TW" | "en-US" | "ja-JP" | "ko-KR";
 
 interface VideoGenerateRes {
     success: boolean;

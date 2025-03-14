@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import type { FormProps } from 'antd';
-import { Button, Form, Input, Select, message } from 'antd';
-import { useTranslation } from 'react-i18next'
-import { getVoiceList, getLLMProviders, generateVideo } from '../../services/index';
-import { VOICE_LANGUAGES, VOICE_LANGUAGES_LABELS } from '../../constants';
-import { getSelectVoiceList } from '../../utils/index';
+import React, {useState, useEffect} from 'react';
+import type {FormProps} from 'antd';
+import {Button, Form, Input, Select, message} from 'antd';
+import {useTranslation} from 'react-i18next'
+import {getVoiceList, getLLMProviders, generateVideo, getLLMModel} from '../../services';
+import {VOICE_LANGUAGES, VOICE_LANGUAGES_LABELS} from '../../constants';
+import {getSelectVoiceList} from '../../utils';
 import styles from './index.module.css'
-import { useVideoStore } from "../../stores/index";
+import {useVideoStore} from "../../stores";
 
 type FieldType = {
     text_llm_provider?: string; // Text LLM provider
@@ -26,24 +26,40 @@ type FieldType = {
 
 
 const App: React.FC = () => {
-    const { setVideoUrl }  = useVideoStore();
-    const { t } = useTranslation();
+    const {setVideoUrl} = useVideoStore();
+    const {t} = useTranslation();
     const [form] = Form.useForm();
     const [allVoiceList, setAllVoiceList] = useState<string[]>([]);
     const [nowVoiceList, setNowVoiceList] = useState<string[]>([]);
-    const [llmProviders, setLLMProviders] = useState<{ textLLMProviders: string[], imageLLMProviders: string[] }>({ textLLMProviders: [], imageLLMProviders: [] });
+    const [llmProviders, setLLMProviders] = useState<{
+        textLLMProviders: string[],
+        imageLLMProviders: string[]
+    }>({textLLMProviders: [], imageLLMProviders: []});
+    const [llmModel, setLLMModel] = useState<{
+        textLLMModel: string,
+        imageLLMModel: string
+    }>({textLLMModel: "", imageLLMModel: ""});
     useEffect(() => {
         console.log('useEffect');
+
         getLLMProviders().then(res => {
             console.log('llmProviders', res);
             setLLMProviders(res);
         }).catch(err => {
             console.log(err);
         })
-        getVoiceList({ area: VOICE_LANGUAGES }).then(res => {
+
+        getLLMModel().then(res => {
+            console.log('llmModel', res);
+            setLLMModel(res);
+        }).catch(err => {
+            console.log(err);
+        })
+
+        getVoiceList({area: VOICE_LANGUAGES}).then(res => {
             console.log('voiceList', res?.voices);
-            if (res?.voices?.length > 0) {
-                setAllVoiceList(res?.voices)
+            if (res?.voices && res.voices.length > 0) {
+                setAllVoiceList(res.voices)
             }
         }).catch(err => {
             console.log(err);
@@ -60,14 +76,14 @@ const App: React.FC = () => {
             console.log('generateVideo res', res);
             message.success('Generate Video Success');
             if (res?.data?.video_url) {
-                setVideoUrl(res?.data?.video_url);
+                setVideoUrl(res.data.video_url);
             }
         }).catch(err => {
             message.error('Generate Video Failed: ' + err?.message || JSON.stringify(err), 10);
             console.log('generateVideo err', err);
         })
     };
-    
+
     const onFinishFailed: FormProps<FieldType>['onFinishFailed'] = (errorInfo) => {
         console.log('Failed:', errorInfo);
     };
@@ -75,17 +91,19 @@ const App: React.FC = () => {
         form.setFieldsValue({
             text_llm_provider: llmProviders.textLLMProviders?.[0],
             image_llm_provider: llmProviders.imageLLMProviders?.[0],
-         });
-      }, [llmProviders.imageLLMProviders, llmProviders.textLLMProviders]);
+            text_llm_model: llmModel.textLLMModel, // 设置 text_llm_model 的值
+            image_llm_model: llmModel.imageLLMModel, // 设置 image_llm_model 的值
+        });
+    }, [llmProviders.imageLLMProviders, llmProviders.textLLMProviders]);
     return (
         <div className={styles.formDiv}>
             <Form
                 form={form}
                 name="basic"
-                labelCol={{ span: 8 }}
-                wrapperCol={{ span: 16 }}
-                style={{ minWidth: 600, justifyContent: 'flex-start' }}
-                initialValues={{ remember: true, resolution: '1024*1024' }}
+                labelCol={{span: 8}}
+                wrapperCol={{span: 16}}
+                style={{minWidth: 600, justifyContent: 'flex-start'}}
+                initialValues={{remember: true, resolution: '1024*1024'}}
                 onFinish={onFinish}
                 onFinishFailed={onFinishFailed}
                 autoComplete="off"
@@ -93,7 +111,7 @@ const App: React.FC = () => {
                 <Form.Item<FieldType>
                     label={t('storyForm.txtLLMProvider')}
                     name="text_llm_provider"
-                    rules={[{ required: true, message: t('storyForm.txtLLMProviderMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.txtLLMProviderMissMsg')}]}
                     initialValue={llmProviders.textLLMProviders?.[0]}
                 >
                     <Select>
@@ -107,7 +125,7 @@ const App: React.FC = () => {
                 <Form.Item<FieldType>
                     label={t('storyForm.imgLLMProvider')}
                     name="image_llm_provider"
-                    rules={[{ required: true, message: t('storyForm.imgLLMProviderMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.imgLLMProviderMissMsg')}]}
                     initialValue={llmProviders.imageLLMProviders?.[0]}
                 >
                     <Select>
@@ -121,34 +139,37 @@ const App: React.FC = () => {
                 <Form.Item<FieldType>
                     label={t('storyForm.txtLLMModel')}
                     name="text_llm_model"
-                    rules={[{ required: true, message: t('storyForm.txtLLMModelMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.txtLLMModelMissMsg')}]}
+                    initialValue={llmModel.textLLMModel}
                 >
-                    <Input placeholder={t('storyForm.textLLMPlaceholder')} />
+                    <Input placeholder={t('storyForm.textLLMPlaceholder')}/>
                 </Form.Item>
                 <Form.Item<FieldType>
                     label={t('storyForm.imgLLMModel')}
                     name="image_llm_model"
-                    rules={[{ required: true, message: t('storyForm.imgLLMModelMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.imgLLMModelMissMsg')}]}
+                    initialValue={llmModel.imageLLMModel}
+
                 >
-                    <Input placeholder={t('storyForm.imageLLMPlaceholder')} />
+                    <Input placeholder={t('storyForm.imageLLMPlaceholder')}/>
                 </Form.Item>
                 <Form.Item<FieldType>
                     label={t('storyForm.resolution')}
                     name="resolution"
-                    rules={[{ required: true, message: t('storyForm.resolutionMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.resolutionMissMsg')}]}
                 >
-                    <Input placeholder={t('storyForm.resolutionPlaceholder')} />
+                    <Input placeholder={t('storyForm.resolutionPlaceholder')}/>
                 </Form.Item>
                 <Form.Item<FieldType>
                     label={t('storyForm.videoLanguage')}
                     name="language"
-                    rules={[{ required: true, message: t('storyForm.videoLanguageMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.videoLanguageMissMsg')}]}
                 >
                     <Select
                         onChange={(value) => {
                             let voiceList = getSelectVoiceList(value, allVoiceList);
                             setNowVoiceList(voiceList);
-                            form.setFieldsValue({ voice_name: voiceList[0].replace('-Female', '').replace('-Male', '') });
+                            form.setFieldsValue({voice_name: voiceList[0].replace('-Female', '').replace('-Male', '')});
                         }}
                     >
                         {
@@ -161,12 +182,13 @@ const App: React.FC = () => {
                 <Form.Item<FieldType>
                     label={t('storyForm.voiceName')}
                     name="voice_name"
-                    rules={[{ required: true, message: t('storyForm.voiceNameMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.voiceNameMissMsg')}]}
                 >
                     <Select>
                         {
                             nowVoiceList.map((voice) => {
-                                return <Select.Option value={voice.replace('-Female', '').replace('-Male', '')}>{voice}</Select.Option>
+                                return <Select.Option
+                                    value={voice.replace('-Female', '').replace('-Male', '')}>{voice}</Select.Option>
                             })
                         }
                     </Select>
@@ -174,16 +196,16 @@ const App: React.FC = () => {
                 <Form.Item<FieldType>
                     label={t('storyForm.textPrompt')}
                     name="story_prompt"
-                    rules={[{ required: true, message: t('storyForm.textPromptMissMsg') }]}
+                    rules={[{required: true, message: t('storyForm.textPromptMissMsg')}]}
                 >
-                    <Input.TextArea rows={4} placeholder={t('storyForm.storyPromptPlaceholder')} />
+                    <Input.TextArea rows={4} placeholder={t('storyForm.storyPromptPlaceholder')}/>
                 </Form.Item>
                 <Form.Item<FieldType>
                     label={t('storyForm.segments')}
                     name="segments"
-                    rules={[{ required: true, message: t('storyForm.segmentsMissMsg'), min: 1, max: 10 }]}
+                    rules={[{required: true, message: t('storyForm.segmentsMissMsg'), min: 1, max: 100}]}
                 >
-                    <Input type='number' min={1} max={10} placeholder="3" />
+                    <Input type='number' min={1} max={100} placeholder="3"/>
                 </Form.Item>
                 <Form.Item label={null}>
                     <Button type="primary" htmlType="submit">

@@ -17,22 +17,29 @@ from dashscope import ImageSynthesis
 from app.schemas.llm import (
     StoryGenerationRequest,
 )
-settings = get_settings()
 
+settings = get_settings()
 
 openai_client = None
 if settings.openai_api_key:
-   openai_client = OpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url or "https://api.openai.com/v1")
+    openai_client = OpenAI(api_key=settings.openai_api_key,
+                           base_url=settings.openai_base_url or "https://api.openai.com/v1")
 aliyun_text_client = None
 if settings.aliyun_api_key:
     dashscope.api_key = settings.aliyun_api_key
-    aliyun_text_client = OpenAI(base_url=settings.aliyun_base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1", api_key=settings.aliyun_api_key) 
+    aliyun_text_client = OpenAI(
+        base_url=settings.aliyun_base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        api_key=settings.aliyun_api_key)
 if settings.deepseek_api_key:
-    deepseek_client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url or "https://api.deepseek.com/v1")
+    deepseek_client = OpenAI(api_key=settings.deepseek_api_key,
+                             base_url=settings.deepseek_base_url or "https://api.deepseek.com/v1")
 if settings.ollama_api_key:
-    ollama_client = OpenAI(api_key=settings.ollama_api_key, base_url=settings.ollama_base_url or "http://localhost:11434/v1")
+    ollama_client = OpenAI(api_key=settings.ollama_api_key,
+                           base_url=settings.ollama_base_url or "http://localhost:11434/v1")
 if settings.siliconflow_api_key:
-    siliconflow_client = OpenAI(api_key=settings.siliconflow_api_key, base_url=settings.siliconflow_base_url or "https://api.siliconflow.cn/v1")
+    siliconflow_client = OpenAI(api_key=settings.siliconflow_api_key,
+                                base_url=settings.siliconflow_base_url or "https://api.siliconflow.cn/v1")
+
 
 class LLMService:
     def __init__(self):
@@ -40,7 +47,7 @@ class LLMService:
         self.aliyun_text_client = aliyun_text_client
         self.text_llm_model = settings.text_llm_model
         self.image_llm_model = settings.image_llm_model
-    
+
     async def generate_story(self, request: StoryGenerationRequest) -> List[Dict[str, Any]]:
         """生成故事场景
         Args:
@@ -50,21 +57,25 @@ class LLMService:
         Returns:
             List[Dict[str, Any]]: 故事场景列表
         """
-        
+
         messages = [
             {"role": "system", "content": "你是一个专业的故事创作者，善于创作引人入胜的故事。请只返回JSON格式的内容。"},
-            {"role": "user", "content": await self._get_story_prompt(request.story_prompt, request.language, request.segments)}
+            {"role": "user",
+             "content": await self._get_story_prompt(request.story_prompt, request.language, request.segments)}
         ]
         logger.info(f"prompt messages: {json.dumps(messages, indent=4, ensure_ascii=False)}")
-        response = await self._generate_response(text_llm_provider = request.text_llm_provider or None, text_llm_model = request.text_llm_model or None, messages=messages, response_format="json_object")
+        response = await self._generate_response(text_llm_provider=request.text_llm_provider or None,
+                                                 text_llm_model=request.text_llm_model or None, messages=messages,
+                                                 response_format="json_object")
         response = response["list"]
         response = self.normalize_keys(response)
 
         logger.info(f"Generated story: {json.dumps(response, indent=4, ensure_ascii=False)}")
         # 验证响应格式
         self._validate_story_response(response)
-        
+
         return response
+
     def normalize_keys(self, data):
         """
         阿里云和 openai 的模型返回结果不一致，处理一下
@@ -89,7 +100,8 @@ class LLMService:
         else:
             raise TypeError("Input must be a dict or list of dicts")
 
-    def generate_image(self, *, prompt: str, image_llm_provider: str = None, image_llm_model: str = None, resolution: str = "1024x1024") -> str:
+    def generate_image(self, *, prompt: str, image_llm_provider: str = None, image_llm_model: str = None,
+                       resolution: str = "1024x1024") -> str:
         # return "https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/1d/56/20250118/3c4cc727/4fc622b5-54a6-484c-bf1f-f1cfb66ace2d-1.png?Expires=1737290655&OSSAccessKeyId=LTAI5tQZd8AEcZX6KZV4G8qL&Signature=W8D4CN3uonQ2pL1e9xGMWufz33E%3D"
         """生成图片
 
@@ -101,18 +113,17 @@ class LLMService:
             str: 图片URL
         """
 
-        
-        image_llm_provider =  image_llm_provider or settings.image_provider
+        image_llm_provider = image_llm_provider or settings.image_provider
         image_llm_model = image_llm_model or settings.image_llm_model
 
         try:
             # 添加安全提示词
             safe_prompt = f"Create a safe, family-friendly illustration. {prompt} The image should be appropriate for all ages, non-violent, and non-controversial."
-            
+
             if image_llm_provider == "aliyun":
                 rsp = ImageSynthesis.call(model=image_llm_model,
-                              prompt=prompt,
-                              size=resolution,)
+                                          prompt=prompt,
+                                          size=resolution, )
                 if rsp.status_code == HTTPStatus.OK:
                     # print("aliyun image response", rsp.output)
                     for result in rsp.output.results:
@@ -148,7 +159,8 @@ class LLMService:
                     "Authorization": "Bearer " + settings.siliconflow_api_key,
                     "Content-Type": "application/json"
                 }
-                response = requests.request("POST", "https://api.siliconflow.cn/v1/images/generations", json=payload, headers=headers)
+                response = requests.request("POST", "https://api.siliconflow.cn/v1/images/generations", json=payload,
+                                            headers=headers)
                 if response.text != None:
                     response = json.loads(response.text)
                     return response["images"][0]["url"]
@@ -176,14 +188,16 @@ class LLMService:
         # 为每个场景生成图片
         for segment in story_segments:
             try:
-                image_url = self.generate_image(prompt=segment["image_prompt"], resolution=request.resolution, image_llm_provider=request.image_llm_provider, image_llm_model=request.image_llm_model)
+                image_url = self.generate_image(prompt=segment["image_prompt"], resolution=request.resolution,
+                                                image_llm_provider=request.image_llm_provider,
+                                                image_llm_model=request.image_llm_model)
                 segment["url"] = image_url
             except Exception as e:
                 logger.error(f"Failed to generate image for segment: {e}")
                 segment["url"] = None
 
         return story_segments
-    
+
     def get_llm_providers(self) -> Dict[str, List[str]]:
         imgLLMList = []
         textLLMList = []
@@ -200,7 +214,10 @@ class LLMService:
         if settings.siliconflow_api_key:
             textLLMList.append("siliconflow")
             imgLLMList.append("siliconflow")
-        return { "textLLMProviders": textLLMList, "imageLLMProviders": imgLLMList }
+        return {"textLLMProviders": textLLMList, "imageLLMProviders": imgLLMList}
+
+    def get_llm_model(self) -> Dict[str, str]:
+        return {"textLLMModel": settings.text_llm_model, "imageLLMModel": settings.image_llm_model}
 
     def _validate_story_response(self, response: any) -> None:
         """验证故事生成响应
@@ -217,20 +234,21 @@ class LLMService:
         for i, scene in enumerate(response):
             if not isinstance(scene, dict):
                 raise LLMResponseValidationError(f"story item {i} must be an object")
-            
+
             if "text" not in scene:
                 raise LLMResponseValidationError(f"Scene {i} missing 'text' field")
-            
+
             if "image_prompt" not in scene:
                 raise LLMResponseValidationError(f"Scene {i} missing 'image_prompt' field")
-            
+
             if not isinstance(scene["text"], str):
                 raise LLMResponseValidationError(f"Scene {i} 'text' must be a string")
-            
+
             if not isinstance(scene["image_prompt"], str):
                 raise LLMResponseValidationError(f"Scene {i} 'image_prompt' must be a string")
 
-    async def _generate_response(self, *, text_llm_provider: str = None, text_llm_model: str = None, messages: List[Dict[str, str]], response_format: str = "json_object") -> any:
+    async def _generate_response(self, *, text_llm_provider: str = None, text_llm_model: str = None,
+                                 messages: List[Dict[str, str]], response_format: str = "json_object") -> any:
         """生成 LLM 响应
 
         Args:
@@ -258,7 +276,7 @@ class LLMService:
         if text_llm_model == None:
             text_llm_model = settings.text_llm_model
         response = text_client.chat.completions.create(
-            model= text_llm_model,
+            model=text_llm_model,
             response_format={"type": response_format},
             messages=messages,
         )
@@ -270,7 +288,8 @@ class LLMService:
             logger.error(f"Failed to parse response: {e}")
             raise e
 
-    async def _get_story_prompt(self, story_prompt: str = None, language: Language = Language.CHINESE_CN, segments: int = 3) -> str:
+    async def _get_story_prompt(self, story_prompt: str = None, language: Language = Language.CHINESE_CN,
+                                segments: int = 3) -> str:
         """生成故事提示词
 
         Args:
@@ -284,7 +303,7 @@ class LLMService:
         languageValue = LANGUAGE_NAMES[language]
         if story_prompt:
             base_prompt = f"讲一个故事，主题是：{story_prompt}"
-        
+
         return f"""
         {base_prompt}. The story needs to be divided into {segments} scenes, and each scene must include descriptive text and an image prompt.
 
@@ -326,7 +345,6 @@ class LLMService:
         }}
         """
 
-    
 
 # 创建服务实例
 llm_service = LLMService()
